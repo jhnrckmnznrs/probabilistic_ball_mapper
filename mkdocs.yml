@@ -1,7 +1,0 @@
-site_name: Probabilistic Ball Mapper
-site_description: Probabilistic Ball Mapper with fused Gromov-Wasserstein comparison
-theme:
-  name: material
-nav:
-  - Home: index.md
-  - API notes: api.md

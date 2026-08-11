@@ -23,7 +23,11 @@ def main() -> None:
     distance, info = fgw_distance(
         pbm_a,
         pbm_b,
-        config=FGWConfig(alpha=0.5, relation="soft_overlap"),
+        config=FGWConfig(
+            alpha=0.5,
+            relation="soft_overlap",
+            geo_scale="epsilon",
+        ),
         return_plan=True,
     )
 
