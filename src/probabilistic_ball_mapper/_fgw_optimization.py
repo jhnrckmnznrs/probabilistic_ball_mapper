@@ -145,7 +145,22 @@ def enumerate_transport_vertices(a, b, max_vertices=30000, tolerance=1e-10):
 
 def globally_optimal_small_plan(M,K1,K2,a,b,alpha=0.5,
                                 relation_scale=1.0,max_bases=30000):
-    """Numerically exhaust all transport-polytope vertices, for small m,n."""
+    """Numerically exhaust all transport-polytope vertices, for small m,n.
+
+    Requires symmetric PSD similarity matrices. This ensures the objective
+    is concave, so at least one globally optimal plan is a vertex.
+    """
+    M=np.asarray(M,dtype=float)
+    a=np.asarray(a,dtype=float)
+    b=np.asarray(b,dtype=float)
+    if M.shape!=(len(a),len(b)):
+        raise ValueError("Feature cost matrix shape does not match marginals")
+    for K, expected in ((K1,len(a)),(K2,len(b))):
+        S=_as_dense(K)
+        if (S.shape!=(expected,expected)
+            or not np.allclose(S,S.T,atol=1e-10)
+            or np.linalg.eigvalsh(S).min() < -1e-10):
+            raise ValueError("Exhaustive vertex optimum requires symmetric PSD similarities")
     best=np.inf
     plan=None
     count=0
