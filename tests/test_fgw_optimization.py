@@ -165,9 +165,11 @@ def test_exact_rational_2x2_certificate():
     assert opt==min(detail["endpoint_objectives"])
     assert detail["feasible_t_interval"]==(Fraction(1,20),Fraction(9,20))
     numeric,_,_=globally_optimal_small_plan(
-        np.array(M,dtype=float),np.array(K1,dtype=float),
-        np.array(K2,dtype=float),np.array(a,dtype=float),
-        np.array(b,dtype=float),alpha=0.4)
+        np.array([[float(Fraction(x)) for x in row] for row in M]),
+        np.array([[float(Fraction(x)) for x in row] for row in K1]),
+        np.array([[float(Fraction(x)) for x in row] for row in K2]),
+        np.array([float(Fraction(x)) for x in a]),
+        np.array([float(Fraction(x)) for x in b]),alpha=0.4)
     assert float(opt)==pytest.approx(numeric,abs=1e-12)
     with pytest.raises(TypeError):
         exact_rational_2x2_certificate(
