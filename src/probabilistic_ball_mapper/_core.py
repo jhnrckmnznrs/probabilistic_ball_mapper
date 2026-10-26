@@ -1049,7 +1049,6 @@ class FGWConfig:
     """
 
     alpha: float = 0.5
-    solver: Literal["pot", "sparse_fw"] = "pot"
     relation: Relation = "soft_overlap"
     lambda_geo: float = 1.0
     lambda_degree: float = 0.0
@@ -1064,6 +1063,7 @@ class FGWConfig:
     tol_rel: float = 1e-9
     tol_abs: float = 1e-9
     verbose: bool = False
+    solver: Literal["pot", "sparse_fw"] = "pot"
 
     def __post_init__(self) -> None:
         if not np.isfinite(self.alpha) or not (0.0 < self.alpha < 1.0):
