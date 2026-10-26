@@ -19,4 +19,5 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[dev]"
       - run: python -m pytest -q
+      - run: python benchmarks/bench_fgw_optimization.py --n 80 --landmarks 5 --restarts 2 --max-iter 35
       - run: python benchmarks/bench_sparse_pbm.py --n 12000 --grid 20 --repeats 3
