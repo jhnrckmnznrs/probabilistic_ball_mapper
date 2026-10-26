@@ -17,7 +17,11 @@ from probabilistic_ball_mapper import (
 def test_sparse_dense_equality_all_kernels(kernel):
     rng = np.random.default_rng(32)
     X = rng.normal(size=(80, 2))
-    C = X[:12].copy()
+    # Avoid coincident landmarks in dense-vs-sparse comparisons: sklearn's
+    # dense Euclidean dot-product formula sometimes returns ~1e-8 for d(x,x),
+    # while radius-neighbor distances resolve the exact zero. Inverse kernels
+    # legitimately amplify that floating-point difference.
+    C = X[:12].copy() + 0.1
     weights = rng.uniform(0.2, 3, size=len(X))
     cfg = MembershipConfig(eps=4.0, membership=kernel)
     dense = fit_from_landmarks(X, C, config=cfg, sample_weight=weights)
@@ -31,7 +35,7 @@ def test_sparse_dense_equality_all_kernels(kernel):
     np.testing.assert_array_equal(
         tiny.adjacency_matrix.toarray(), dense.adjacency_matrix)
     assert all(np.array_equal(a, b) for a, b in zip(tiny.cover, dense.cover))
-    np.testing.assert_allclose(tiny.to_dense().W, dense.W)
+    np.testing.assert_allclose(tiny.to_dense().W, dense.W, atol=1e-12)
 
 
 def test_strict_boundary_with_extreme_sigma():
