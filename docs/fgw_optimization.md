@@ -175,3 +175,40 @@ For the reproducible benchmark run:
 ```bash
 python benchmarks/bench_fgw_optimization.py --n 250 --landmarks 12 --restarts 4
 ```
+
+## Exact global certificate in the rational 2x2 case
+
+For two source and two target vertices, every feasible coupling is
+
+\[
+T(t)=\begin{pmatrix}
+t&a_1-t\\
+b_1-t&b_2-a_1+t
+\end{pmatrix},
+\quad
+\max(0,a_1-b_2)\le t\le\min(a_1,b_1).
+\]
+
+If both similarities are PSD, Theorem 1 implies that the global
+minimum occurs at one of these **two endpoints**. When every input
+weight, cost, similarity, and scale is rational, Python `Fraction`
+evaluates both objectives exactly and gives a genuine exact-arithmetic
+global certificate for that rational instance.
+
+```python
+from probabilistic_ball_mapper._fgw_optimization import (
+    exact_rational_2x2_certificate
+)
+
+value, plan, certificate = exact_rational_2x2_certificate(
+    M=[["0", "1/5"], ["9/10", "1/10"]],
+    K1=[["1", "3/10"], ["3/10", "1"]],
+    K2=[["1", "1/2"], ["1/2", "1"]],
+    a=["3/5", "2/5"],
+    b=["9/20", "11/20"],
+    alpha="2/5",
+)
+```
+
+Floating-point inputs are intentionally rejected. Do not treat this as a
+general exact certificate for floating-point PBM summaries or large graphs.
