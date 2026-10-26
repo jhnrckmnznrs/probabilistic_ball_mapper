@@ -8,6 +8,7 @@ from probabilistic_ball_mapper import (
 )
 from probabilistic_ball_mapper._fgw_optimization import (
     enumerate_transport_vertices, globally_optimal_small_plan,
+    exact_rational_2x2_certificate,
     objective_parts, rectangle_vertex_exchange,
 )
 
@@ -145,3 +146,36 @@ def test_config_validation_and_budget():
     assert 1<=info["restarts_completed"]<=16
     assert np.isfinite(info["final_fw_gap"])
     assert info["elapsed_seconds"]>0
+
+
+def test_exact_rational_2x2_certificate():
+    from fractions import Fraction
+    a=["3/5","2/5"]
+    b=["9/20","11/20"]
+    M=[["0","1/5"],["9/10","1/10"]]
+    K1=[["1","3/10"],["3/10","1"]]
+    K2=[["1","1/2"],["1/2","1"]]
+    opt,plan,detail=exact_rational_2x2_certificate(
+        M,K1,K2,a,b,alpha="2/5")
+    assert isinstance(opt,Fraction)
+    assert all(isinstance(v,Fraction) for row in plan for v in row)
+    assert [sum(row) for row in plan]==[Fraction(x) for x in a]
+    assert [sum(plan[i][j] for i in range(2)) for j in range(2)]==[
+        Fraction(x) for x in b]
+    assert opt==min(detail["endpoint_objectives"])
+    assert detail["feasible_t_interval"]==(Fraction(1,20),Fraction(9,20))
+    numeric,_,_=globally_optimal_small_plan(
+        np.array(M,dtype=float),np.array(K1,dtype=float),
+        np.array(K2,dtype=float),np.array(a,dtype=float),
+        np.array(b,dtype=float),alpha=0.4)
+    assert float(opt)==pytest.approx(numeric,abs=1e-12)
+    with pytest.raises(TypeError):
+        exact_rational_2x2_certificate(
+            [[0.0,0],[0,0]],K1,K2,a,b)
+
+
+def test_rational_certificate_rejects_non_psd_similarity():
+    with pytest.raises(ValueError,match="PSD"):
+        exact_rational_2x2_certificate(
+            [[0,1],[1,0]],[[1,2],[2,1]],
+            [[1,0],[0,1]],["1/2","1/2"],["1/2","1/2"])
