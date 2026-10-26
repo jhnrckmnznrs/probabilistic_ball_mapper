@@ -227,10 +227,15 @@ def optimize_concave_fgw(M,K1,K2,a,b,alpha,relation_scale,
     best_info=None
     histories=[]
     completed=0
-    init_gen=generate_initial_plans(a,b,n_restarts,random_state,transport_oracle=lambda _a,_b,C:oracle(C))
-    for restart, initial in enumerate(init_gen):
+    init_gen=generate_initial_plans(
+        a,b,n_restarts,random_state,transport_oracle=lambda _a,_b,C:oracle(C)
+    )
+    for restart in range(n_restarts):
+        # Check BEFORE generating a random OT starting vertex: do not spend
+        # an unaccounted oracle call after the wall-clock budget expires.
         if restart and time_budget is not None and perf_counter()-started>=time_budget:
             break
+        initial=next(init_gen)
         T=initial.copy()
         if np.min(T)<-1e-12 or not np.allclose(T.sum(axis=1),a,atol=1e-8) or not np.allclose(T.sum(axis=0),b,atol=1e-8):
             raise ValueError("Invalid initial transport plan")
@@ -266,12 +271,15 @@ def optimize_concave_fgw(M,K1,K2,a,b,alpha,relation_scale,
                 T=candidate
                 gain_total+=gain
                 pivots+=1
-        # Recompute end-of-run gap at returned plan, including after pivots.
-        val,feat,struct,P=evaluate(T)
-        grad=(1-alpha)*M-4*alpha*factor*P
-        S=oracle(grad)
-        gap=max(0.0,float(np.sum(grad*(T-S))))
-        converged=gap<=max(tol_abs,tol_rel*max(1.0,abs(val)))
+        # If the last iteration already checked the FW gap at the current
+        # (unchanged) plan, reuse that evaluation. No duplicated oracle
+        # call or similarity contraction is needed.
+        if not (converged and pivot_steps == 0):
+            val,feat,struct,P=evaluate(T)
+            grad=(1-alpha)*M-4*alpha*factor*P
+            S=oracle(grad)
+            gap=max(0.0,float(np.sum(grad*(T-S))))
+            converged=gap<=max(tol_abs,tol_rel*max(1.0,abs(val)))
         report={"restart":restart,"objective":float(val),"iterations":iterations,
                 "converged":bool(converged),"final_fw_gap":float(gap),
                 "pivot_improvements":pivots,"pivot_gain":float(gain_total),
