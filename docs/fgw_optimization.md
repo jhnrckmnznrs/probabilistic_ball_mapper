@@ -46,12 +46,11 @@ For two covers, let `a,b` denote strictly positive normalized vertex
 masses, and let
 
 \[
-\Pi(a,b)=\{T\ge 0:T\mathbf1=b\text{ (column sums)},\;
-  T\mathbf1=a\text{ (row sums)}\}.
+\Pi(a,b)=\{T\in\mathbb R_{\ge0}^{m\times n}:\;
+ T\mathbf1_n=a,\quad T^\top\mathbf1_m=b\}.
 \]
 
-Here the shorthand should be read componentwise as
-`T 1_n=a` and `T^T 1_m=b`; transport plans have `m x n` entries.
+Thus every feasible `m x n` transport plan has row masses `a` and column masses `b`.
 With fixed relation scale `s>0`, fixed cross-node cost `M`, and
 `0<alpha<1`, set
 
