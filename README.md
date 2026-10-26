@@ -186,3 +186,45 @@ d, info = fgw_distance(summary, other_summary,
 
 For careful reproducibility and numerical comparisons, keep the `storage="dense"`
 baseline. Sparse backends are opt-in pending wider cross-dataset benchmarks.
+
+## Experimental FGW optimization controls
+
+For `relation="soft_overlap"`, PBM similarities are positive semidefinite,
+making the squared-loss FGW objective **concave** in the transport plan.
+Consequently the Frank–Wolfe linear transport oracle can take full steps
+without the general quadratic line search. This is a **local optimization
+method**, not a proof that the returned coupling is globally optimal.
+
+```python
+cfg = FGWConfig(
+    solver="sparse_fw",
+    relation="soft_overlap",
+    n_restarts=4,        # product coupling + 3 random LP vertices
+    random_state=7,      # reproducible multi-start initialization
+    pivot_steps=2,       # optional mass-preserving 2x2 cycle exchanges
+    pivot_candidates=512,
+    time_budget=None,    # optional soft seconds limit across restarts
+)
+distance, diagnostics = fgw_distance(pbm_a, pbm_b, config=cfg, return_plan=True)
+print(diagnostics["restarts_completed"], diagnostics["restart_history"])
+print(diagnostics["oracle_seconds"], diagnostics["contraction_seconds"])
+print(diagnostics["final_fw_gap"])  # stationarity, NOT global optimality
+```
+
+With `n_restarts=1` and `pivot_steps=0` (both defaults), sparse
+FGW uses one product initialization. The POT solver remains the default.
+The transport plan and cross-node feature costs remain dense.
+
+A complete derivation, limitations, exhaustive tiny-case reference solver,
+and numerical experiment protocol appear in
+[Concave squared-loss FGW optimization](docs/fgw_optimization.md).
+
+To run the same-initialization comparison with POT, including equal-restart
+and equal-wall-clock comparisons plus oracle/contraction profiling:
+
+```bash
+python benchmarks/bench_fgw_optimization.py --n 250 --landmarks 12 --restarts 4
+```
+
+The matched-time budget is soft: calls to EMD cannot be interrupted mid-solve.
+Synthetic speedups are not a substitute for measurements on real datasets.

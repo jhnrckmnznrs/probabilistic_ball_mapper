@@ -1064,12 +1064,38 @@ class FGWConfig:
     tol_abs: float = 1e-9
     verbose: bool = False
     solver: Literal["pot", "sparse_fw"] = "pot"
+    n_restarts: int = 1
+    random_state: int | None = 0
+    pivot_steps: int = 0
+    pivot_candidates: int = 1024
+    time_budget: float | None = None
 
     def __post_init__(self) -> None:
         if not np.isfinite(self.alpha) or not (0.0 < self.alpha < 1.0):
             raise ValueError("alpha must satisfy 0 < alpha < 1.")
         if self.solver not in {"pot", "sparse_fw"}:
             raise ValueError("solver must be 'pot' or 'sparse_fw'.")
+        if (not isinstance(self.n_restarts, int) or isinstance(self.n_restarts, bool)
+                or self.n_restarts < 1):
+            raise ValueError("n_restarts must be a positive integer.")
+        if self.random_state is not None and (
+            not isinstance(self.random_state, int) or self.random_state < 0
+        ):
+            raise ValueError("random_state must be None or a nonnegative integer.")
+        if (not isinstance(self.pivot_steps, int) or self.pivot_steps < 0
+                or not isinstance(self.pivot_candidates, int)
+                or self.pivot_candidates < 0):
+            raise ValueError("pivot_steps and pivot_candidates must be nonnegative.")
+        if self.time_budget is not None and (
+            not np.isfinite(self.time_budget) or self.time_budget <= 0
+        ):
+            raise ValueError("time_budget must be finite and positive.")
+        if self.solver == "pot" and (
+            self.n_restarts != 1 or self.pivot_steps or self.time_budget is not None
+        ):
+            raise ValueError(
+                "n_restarts, pivot_steps and time_budget currently apply to sparse_fw only."
+            )
         if self.relation not in _VALID_RELATIONS:
             raise ValueError(
                 "relation must be one of " + ", ".join(_VALID_RELATIONS) + "."

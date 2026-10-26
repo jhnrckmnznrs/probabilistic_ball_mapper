@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased — FGW optimization experiments
+
+- Exploit positive semidefiniteness of PBM soft-overlap similarities:
+  squared-loss FGW is concave on the transport polytope, so full
+  Frank–Wolfe steps are nonincreasing and need no quadratic line search.
+- Add reproducible random-vertex multi-start with best-objective selection,
+  optional sparse 2x2 vertex exchanges, and soft time budgets.
+- Report per-start convergence gaps and oracle/contraction timing.
+- Add exhaustive small-polytope numerical reference and exact rational
+  2x2 global-optimality certificates.
+- Add matched-POT benchmarks (same initial plans, equal-restart and
+  equal-time protocols) and mathematical explanation in documentation.
+- The POT default is unchanged. Global FGW optimization remains nonconvex.
+
 ## 0.2.0
 
 - Makes localized memberships subordinate to strict open epsilon-ball covers by
