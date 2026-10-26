@@ -652,7 +652,11 @@ def fit_pbm(
     config: MembershipConfig,
     landmark_config: LandmarkConfig | None = None,
     sample_weight: NDArray[Any] | None = None,
+    *,
+    storage: Literal["dense", "sparse"] = "dense",
+    batch_size: int = 2048,
 ) -> ProbabilisticBallMapper:
+
     """Fit a probabilistic Ball Mapper summary from a point cloud.
 
     This is the main construction routine. It first asks fast-ballmapper to
@@ -677,6 +681,15 @@ def fit_pbm(
         Static PBM summary containing landmarks, cover, graph, memberships,
         vertex masses, overlaps, and adjacency matrix.
     """
+
+    if storage not in {"dense", "sparse"}:
+        raise ValueError("storage must be 'dense' or 'sparse'.")
+    if storage == "sparse":
+        from ._sparse import fit_pbm_sparse
+
+        return fit_pbm_sparse(
+            X, config, landmark_config, sample_weight, batch_size=batch_size
+        )
 
     X = _as_2d_float(X, "X")
     if landmark_config is None:
@@ -750,12 +763,24 @@ def fit_pbm_from_landmarks(
     landmark_points: NDArray[Any],
     config: MembershipConfig,
     sample_weight: NDArray[Any] | None = None,
+    *,
+    storage: Literal["dense", "sparse"] = "dense",
+    batch_size: int = 2048,
 ) -> ProbabilisticBallMapper:
     """Construct a PBM using an already fixed landmark cover.
 
     The graph and cover always use strict geometric incidence ``d < eps``.
     They are never inferred from extrapolated membership entries.
     """
+
+    if storage not in {"dense", "sparse"}:
+        raise ValueError("storage must be 'dense' or 'sparse'.")
+    if storage == "sparse":
+        from ._sparse import fit_pbm_sparse_from_landmarks
+
+        return fit_pbm_sparse_from_landmarks(
+            X, landmark_points, config, sample_weight, batch_size=batch_size
+        )
 
     X = _as_2d_float(X, "X")
     landmark_points = _as_2d_float(landmark_points, "landmark_points")
@@ -1024,6 +1049,7 @@ class FGWConfig:
     """
 
     alpha: float = 0.5
+    solver: Literal["pot", "sparse_fw"] = "pot"
     relation: Relation = "soft_overlap"
     lambda_geo: float = 1.0
     lambda_degree: float = 0.0
@@ -1042,6 +1068,8 @@ class FGWConfig:
     def __post_init__(self) -> None:
         if not np.isfinite(self.alpha) or not (0.0 < self.alpha < 1.0):
             raise ValueError("alpha must satisfy 0 < alpha < 1.")
+        if self.solver not in {"pot", "sparse_fw"}:
+            raise ValueError("solver must be 'pot' or 'sparse_fw'.")
         if self.relation not in _VALID_RELATIONS:
             raise ValueError(
                 "relation must be one of " + ", ".join(_VALID_RELATIONS) + "."
@@ -1126,6 +1154,15 @@ def fused_gromov_wasserstein_distance(
 
     if config is None:
         config = FGWConfig()
+    if config.solver == "sparse_fw":
+        from ._sparse_fgw import sparse_fgw_distance
+
+        return sparse_fgw_distance(pbm_a, pbm_b, config, return_plan)
+    if hasattr(pbm_a.W, "toarray") or hasattr(pbm_b.W, "toarray"):
+        raise ValueError(
+            "POT solver requires dense PBMs. Use solver='sparse_fw' "
+            "or explicitly convert both summaries with .to_dense()."
+        )
 
     alpha = config.alpha
     relation = config.relation
