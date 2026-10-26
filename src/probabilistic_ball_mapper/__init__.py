@@ -24,9 +24,24 @@ from ._core import (
     vertex_feature_cost_matrix,
 )
 
+from ._sparse import (
+    SparseProbabilisticBallMapper,
+    fit_pbm_sparse,
+    fit_pbm_sparse_from_landmarks,
+    sparse_similarity,
+    spectral_operator,
+)
+from ._sparse_fgw import sparse_fgw_distance
+
 __version__ = "0.2.0"
 
 __all__ = [
+    "SparseProbabilisticBallMapper",
+    "fit_pbm_sparse",
+    "fit_pbm_sparse_from_landmarks",
+    "sparse_similarity",
+    "spectral_operator",
+    "sparse_fgw_distance",
     "FGWConfig",
     "LandmarkConfig",
     "MembershipConfig",
