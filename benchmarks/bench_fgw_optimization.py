@@ -56,7 +56,13 @@ def main():
     rng=np.random.default_rng(args.seed)
     X=rng.normal(size=(args.n,2))
     Y=X+0.2*rng.normal(size=X.shape)
-    cfg=MembershipConfig(eps=3.0, membership="gaussian")
+    from sklearn.metrics import pairwise_distances
+    # Ensure strict open-ball coverage for the fixed-landmark benchmark.
+    radius=max(
+        pairwise_distances(X,X[:args.landmarks]+0.05).min(axis=1).max(),
+        pairwise_distances(Y,Y[:args.landmarks]+0.05).min(axis=1).max(),
+    )*1.01 + 1e-9
+    cfg=MembershipConfig(eps=radius, membership="gaussian")
     a=fit_from_landmarks(X,X[:args.landmarks]+0.05,config=cfg,storage="sparse")
     b=fit_from_landmarks(Y,Y[:args.landmarks]+0.05,config=cfg,storage="sparse")
     x=a.vertex_mass.copy()
