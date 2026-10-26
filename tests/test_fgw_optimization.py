@@ -181,3 +181,11 @@ def test_rational_certificate_rejects_non_psd_similarity():
         exact_rational_2x2_certificate(
             [[0,1],[1,0]],[[1,2],[2,1]],
             [[1,0],[0,1]],["1/2","1/2"],["1/2","1/2"])
+
+
+def test_exhaustive_vertex_reference_rejects_indefinite_similarity():
+    a=np.array([0.5,0.5])
+    M=np.zeros((2,2))
+    bad=np.array([[1.0,2.0],[2.0,1.0]])
+    with pytest.raises(ValueError,match="PSD"):
+        globally_optimal_small_plan(M,bad,np.eye(2),a,a)
