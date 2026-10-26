@@ -295,3 +295,67 @@ def optimize_concave_fgw(M,K1,K2,a,b,alpha,relation_scale,
         "optimization_conclusion":"stationary point only; no global guarantee",
     })
     return best_T,metrics
+
+
+def exact_rational_2x2_certificate(M, K1, K2, a, b, alpha="1/2", scale=1):
+    """Globally certify a 2x2 squared-loss FGW minimum using exact fractions.
+
+    All inputs MUST be exact rationals (int, Fraction, or string fraction).
+    Floating-point inputs are rejected, since converting an inexact decimal
+    float to Fraction would not certify the intended mathematical problem.
+
+    Every 2x2 coupling is determined by t=T[0,0] in the closed interval
+    [max(0, a0-b1), min(a0,b0)]. The objective is concave for PSD K and
+    therefore takes its minimum at an endpoint. We also test positive
+    semidefiniteness exactly, via diagonal signs and determinant.
+    """
+    from fractions import Fraction
+
+    def q(x):
+        if isinstance(x, (float, np.floating)):
+            raise TypeError("Use exact integer, Fraction, or string rational inputs")
+        return Fraction(x)
+
+    def vec(v):
+        if len(v)!=2:
+            raise ValueError("Only 2-point marginals are supported")
+        return [q(x) for x in v]
+
+    def mat(v):
+        if len(v)!=2 or any(len(r)!=2 for r in v):
+            raise ValueError("Only 2x2 matrices are supported")
+        return [[q(x) for x in row] for row in v]
+
+    a,b=vec(a),vec(b)
+    M,K1,K2=mat(M),mat(K1),mat(K2)
+    alpha,scale=q(alpha),q(scale)
+    if (any(x<=0 for x in a+b) or sum(a)!=sum(b) or sum(a)!=1
+        or not 0<alpha<1 or scale<=0):
+        raise ValueError("Require positive probability marginals, alpha and scale")
+    for K in (K1,K2):
+        if (K[0][1]!=K[1][0] or min(K[0][0],K[1][1])<0
+            or K[0][0]*K[1][1]-K[0][1]*K[1][0]<0):
+            raise ValueError("Rational similarity matrices must be symmetric PSD")
+
+    lo=max(Fraction(0),a[0]-b[1])
+    hi=min(a[0],b[0])
+    if lo>hi:
+        raise RuntimeError("Invalid probability marginals")
+
+    def plan(t):
+        return [[t,a[0]-t],[b[0]-t,b[1]-a[0]+t]]
+
+    def objective(T):
+        f=sum(M[i][j]*T[i][j] for i in range(2) for j in range(2))
+        s=sum((K1[i][k]-K2[j][l])**2*T[i][j]*T[k][l]
+              for i in range(2) for j in range(2)
+              for k in range(2) for l in range(2))
+        return (1-alpha)*f+alpha*s/(scale*scale)
+
+    candidates=[(objective(plan(t)),plan(t)) for t in sorted({lo,hi})]
+    opt,T=min(candidates,key=lambda pair:pair[0])
+    return opt,T,{
+        "endpoint_objectives": tuple(v for v,_ in candidates),
+        "feasible_t_interval": (lo,hi),
+        "certificate": "exact rational endpoint enumeration + PSD concavity",
+    }
