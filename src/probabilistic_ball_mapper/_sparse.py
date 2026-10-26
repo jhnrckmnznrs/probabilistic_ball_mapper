@@ -257,13 +257,13 @@ def fit_pbm_sparse(X, config, landmark_config=None, sample_weight=None,
     strict_eps = float(np.nextafter(config.eps, -np.inf))
     if strict_eps <= 0:
         raise ValueError("eps is too small for strict-radius landmark search")
-    kwargs = dict(X=X, eps=strict_eps, method=lc.method,
+    kwargs = dict(eps=strict_eps, method=lc.method,
                   metric=config.metric, leaf_size=lc.leaf_size,
                   metric_kwargs=config.metric_kwargs)
     if lc.selection == "fps":
-        ids, _ = fps(**kwargs, start_index=lc.start_index)
+        ids, _ = fps(X, **kwargs, start_index=lc.start_index)
     else:
-        ids, _ = choose(**kwargs)
+        ids, _ = choose(X, **kwargs)
     ids = np.asarray(ids, dtype=np.int64)
     if (ids.ndim != 1 or len(ids) == 0 or np.any(ids < 0) or
             np.any(ids >= len(X)) or len(np.unique(ids)) != len(ids)):
