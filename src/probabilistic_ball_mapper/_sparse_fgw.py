@@ -89,16 +89,21 @@ def sparse_fgw_distance(pbm_a, pbm_b, config, return_plan=False):
                                      degree(pbm_b,ib)[None,:])**2
 
     alpha = config.alpha
+    relation_scale = 1.0 if config.relation_scale is None else float(config.relation_scale)
+    structural_factor = 1.0 / (relation_scale * relation_scale)
     c1 = float(a @ (K1.multiply(K1) @ a))
     c2 = float(b @ (K2.multiply(K2) @ b))
 
     def contraction(T):
         return np.asarray((K1 @ T) @ K2, dtype=np.float64)
 
+    c1 *= structural_factor
+    c2 *= structural_factor
+
     def eval_terms(T, prod=None):
         prod = contraction(T) if prod is None else prod
         feat = float(np.sum(M*T))
-        structure = max(0.0, c1+c2-2.0*float(np.sum(prod*T)))
+        structure = max(0.0, c1+c2-2.0*structural_factor*float(np.sum(prod*T)))
         return feat, structure
 
     T = np.outer(a,b)
@@ -107,7 +112,7 @@ def sparse_fgw_distance(pbm_a, pbm_b, config, return_plan=False):
     iterations = 0
     for it in range(config.max_iter):
         P = contraction(T)
-        gradient = (1-alpha)*M - 4*alpha*P
+        gradient = (1-alpha)*M - 4*alpha*structural_factor*P
         S = _transport_oracle(a,b,gradient)
         diff = S - T
         gap = max(0.0, -float(np.sum(gradient*diff)))
@@ -119,7 +124,7 @@ def sparse_fgw_distance(pbm_a, pbm_b, config, return_plan=False):
             converged = True
             break
         Pdiff = contraction(diff)
-        A = -2*alpha*float(np.sum(Pdiff*diff))
+        A = -2*alpha*structural_factor*float(np.sum(Pdiff*diff))
         B = float(np.sum(gradient*diff))
         if A > 0:
             step = float(np.clip(-B/(2*A),0.0,1.0))
@@ -140,7 +145,7 @@ def sparse_fgw_distance(pbm_a, pbm_b, config, return_plan=False):
         "lambda_geo": float(config.lambda_geo),
         "lambda_degree": float(config.lambda_degree),
         "geo_scale": float(geo_scale),
-        "relation_scale": 1.0,
+        "relation_scale": relation_scale,
         "feature_part": feat,
         "structural_part": struct,
         "weighted_feature_part": (1-alpha)*feat,
