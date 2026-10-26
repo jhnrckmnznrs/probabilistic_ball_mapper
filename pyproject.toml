@@ -35,6 +35,7 @@ dependencies = [
     "fast-ballmapper",
     "networkx>=3.0",
     "numpy>=1.23",
+    "scipy>=1.10",
     "POT>=0.9",
     "scikit-learn>=1.2",
 ]

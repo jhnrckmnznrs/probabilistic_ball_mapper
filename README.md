@@ -144,3 +144,45 @@ python -m build
 ## License
 
 This project is licensed under the MIT License. See [`LICENSE`](LICENSE).
+
+## Sparse PBM and spectral operators (experimental)
+
+The existing dense API remains the default. Opt into the exact sparse path
+when balls are localized and each point meets relatively few landmarks:
+
+```python
+from probabilistic_ball_mapper import (
+    MembershipConfig, FGWConfig, fit, fit_from_landmarks,
+    fgw_distance, spectral_operator,
+)
+from scipy.sparse.linalg import eigsh
+
+cfg = MembershipConfig(eps=0.6)
+summary = fit(X, config=cfg, storage="sparse")  # or fit_from_landmarks(..., storage="sparse")
+L, active_indices = spectral_operator(summary)
+eigenvalues, eigenvectors = eigsh(L, k=min(5, len(active_indices)-1),
+                                  which="LA")  # k must be smaller than the operator dimension
+
+d, info = fgw_distance(summary, other_summary,
+    config=FGWConfig(solver="sparse_fw", relation="soft_overlap"),
+    return_plan=True)
+```
+
+- Sparse CSR memberships store only entries for strict open-ball incidences.
+  Geometric incidence, not numerical positive weight support, determines the
+  graph. Samples outside a fixed cover still follow the configured policy.
+- Vertex masses and soft overlaps are computed by exact weighted sparse
+  products. Spectral operators act without explicitly forming the overlap.
+- `solver="sparse_fw"` applies only to `relation="soft_overlap"`, and uses
+  sparse similarity contractions and an exact line search. It **still holds
+  a dense transport plan and feature cost** (quadratic in landmark count
+  for two equal-size covers). Its result is a local stationary solution of a
+  nonconvex problem; compare convergence and objective against POT.
+- The sparse solver reports `iterations`, `converged`, `final_fw_gap`,
+  `source_similarity_matrix`, and `target_similarity_matrix`, instead of
+  dense relation matrices. Fixed `geo_scale` and `relation_scale` are honored.
+- Existing POT FGW works on dense summaries. Convert explicitly via
+  `sparse_summary.to_dense()` if needed; this can allocate large arrays.
+
+For careful reproducibility and numerical comparisons, keep the `storage="dense"`
+baseline. Sparse backends are opt-in pending wider cross-dataset benchmarks.
