@@ -59,9 +59,13 @@ def sparse_fgw_distance(pbm_a, pbm_b, config, return_plan=False):
     K2 = sparse_similarity(pbm_b, ib)
 
     if config.geo_scale == "epsilon":
-        if pbm_a.eps != pbm_b.eps:
-            raise ValueError("geo_scale='epsilon' requires the same epsilon")
-        geo_scale = pbm_a.eps
+        if config.lambda_geo:
+            if pbm_a.eps != pbm_b.eps:
+                raise ValueError("geo_scale='epsilon' requires the same epsilon")
+            geo_scale = pbm_a.eps
+        else:
+            # Identical to the dense POT path: unused geometric scale.
+            geo_scale = 1.0
     else:
         geo_scale = float(config.geo_scale)
 
