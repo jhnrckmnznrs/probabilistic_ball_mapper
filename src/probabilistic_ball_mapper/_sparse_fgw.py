@@ -110,38 +110,24 @@ def sparse_fgw_distance(pbm_a, pbm_b, config, return_plan=False):
         structure = max(0.0, c1+c2-2.0*structural_factor*float(np.sum(prod*T)))
         return feat, structure
 
-    T = np.outer(a,b)
-    converged = False
-    gap = np.inf
-    iterations = 0
-    for it in range(config.max_iter):
-        P = contraction(T)
-        gradient = (1-alpha)*M - 4*alpha*structural_factor*P
-        S = _transport_oracle(a,b,gradient)
-        diff = S - T
-        gap = max(0.0, -float(np.sum(gradient*diff)))
-        feat, struct = eval_terms(T,P)
-        objective = (1-alpha)*feat + alpha*struct
-        target = max(config.tol_abs, config.tol_rel*max(1.0, abs(objective)))
-        iterations = it+1
-        if gap <= target:
-            converged = True
-            break
-        Pdiff = contraction(diff)
-        A = -2*alpha*structural_factor*float(np.sum(Pdiff*diff))
-        B = float(np.sum(gradient*diff))
-        if A > 0:
-            step = float(np.clip(-B/(2*A),0.0,1.0))
-        else:
-            step = 1.0 if A+B < 0 else 0.0
-        if step == 0:
-            break
-        T += step*diff
-        if np.min(T) < -1e-12:
-            raise FloatingPointError("Negative transport plan produced")
+    from ._fgw_optimization import optimize_concave_fgw
 
-    feat, struct = eval_terms(T)
-    objective = max(0.0,(1-alpha)*feat+alpha*struct)
+    T, diagnostics = optimize_concave_fgw(
+        M, K1, K2, a, b, alpha, relation_scale,
+        transport_oracle=_transport_oracle,
+        max_iter=config.max_iter, tol_rel=config.tol_rel,
+        tol_abs=config.tol_abs, n_restarts=config.n_restarts,
+        random_state=config.random_state,
+        pivot_steps=config.pivot_steps,
+        pivot_candidates=config.pivot_candidates,
+        time_budget=config.time_budget,
+    )
+    feat = diagnostics["feature_part"]
+    struct = diagnostics["structural_part"]
+    objective = diagnostics["objective"]
+    converged = diagnostics["converged"]
+    iterations = diagnostics["iterations"]
+    gap = diagnostics["final_fw_gap"]
     info = {
         "objective": objective,
         "alpha": float(alpha),
@@ -165,6 +151,16 @@ def sparse_fgw_distance(pbm_a, pbm_b, config, return_plan=False):
         "converged": converged,
         "final_fw_gap": float(gap),
         "solver": "sparse_fw",
+        "restarts_completed": diagnostics["restarts_completed"],
+        "restart_history": diagnostics["restart_history"],
+        "pivot_improvements": diagnostics["pivot_improvements"],
+        "pivot_gain": diagnostics["pivot_gain"],
+        "oracle_seconds": diagnostics["oracle_seconds"],
+        "contraction_seconds": diagnostics["contraction_seconds"],
+        "oracle_calls": diagnostics["oracle_calls"],
+        "contraction_calls": diagnostics["contraction_calls"],
+        "elapsed_seconds": diagnostics["elapsed_seconds"],
+        "optimization_conclusion": diagnostics["optimization_conclusion"],
     }
     if return_plan:
         info["transport_plan"] = T.copy()
