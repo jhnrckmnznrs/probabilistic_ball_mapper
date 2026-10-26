@@ -50,7 +50,9 @@ def rectangle_vertex_exchange(T, gradient, K1, K2, alpha, relation_scale=1.0,
     if max_candidates < 0:
         raise ValueError("max_candidates must be nonnegative")
     T = np.asarray(T, dtype=float)
-    K1, K2 = _as_dense(K1), _as_dense(K2)
+    # Do not densify K for local exchanges: preserve sparse summary storage.
+    diag1 = np.asarray(K1.diagonal()).ravel()
+    diag2 = np.asarray(K2.diagonal()).ravel()
     entries = np.argwhere(T > 1e-14)
     total = len(entries)*(len(entries)-1)//2
     if total == 0 or max_candidates == 0:
@@ -77,8 +79,8 @@ def rectangle_vertex_exchange(T, gradient, K1, K2, alpha, relation_scale=1.0,
         # delta F = t * <grad F,D> - 2 alpha t²/s² (u^T K1 u)(v^T K2 v).
         derivative = (gradient[i,j]-gradient[i,l]
                       -gradient[k,j]+gradient[k,l])
-        quad = ((K1[i,i]+K1[k,k]-2*K1[i,k])
-                *(K2[j,j]+K2[l,l]-2*K2[j,l]))
+        quad = ((diag1[i]+diag1[k]-2*float(K1[i,k]))
+                *(diag2[j]+diag2[l]-2*float(K2[j,l])))
         delta = t*derivative - (2*alpha/(relation_scale**2))*t*t*quad
         examined += 1
         if delta < -max(min_gain,1e-13) and -delta > best_gain:
@@ -253,12 +255,11 @@ def optimize_concave_fgw(M,K1,K2,a,b,alpha,relation_scale,
             T=S
 
         if pivot_steps:
-            KD1,KD2=_as_dense(K1),_as_dense(K2)
             for _ in range(pivot_steps):
                 _,_,_,P=evaluate(T)
                 grad=(1-alpha)*M-4*alpha*factor*P
                 candidate,gain,_=rectangle_vertex_exchange(
-                    T,grad,KD1,KD2,alpha,relation_scale,
+                    T,grad,K1,K2,alpha,relation_scale,
                     max_candidates=pivot_candidates,rng=rng)
                 if gain<=0:
                     break
